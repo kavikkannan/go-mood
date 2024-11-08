@@ -47,7 +47,7 @@ func Login(c *fiber.Ctx) error {
 	if err == sql.ErrNoRows {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "User not found"})
 	} else if err != nil {
-		fmt.Println("Database error:", err) // Log error for debugging
+		fmt.Println("Database error:", err) 
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Database error"})
 	}
 
@@ -58,12 +58,13 @@ func Login(c *fiber.Ctx) error {
 
 	// Create JWT claims
 	claims := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"Issuer":  strconv.Itoa(id),
-		"Expires": time.Now().Add(time.Hour * 24).Unix(),
+		"Issuer":   strconv.Itoa(id),
+		"Expires":  time.Now().Add(time.Hour * 24).Unix(),
+		
 	})
 	token, err := claims.SignedString([]byte(SecretKey))
 	if err != nil {
-		fmt.Println("JWT signing error:", err) // Log JWT error for debugging
+		fmt.Println("JWT signing error:", err) 
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Could not login"})
 	}
 
@@ -80,36 +81,46 @@ func Login(c *fiber.Ctx) error {
 	}
 	c.Cookie(&cookie)
 
-	return c.JSON(fiber.Map{"message": "Login successful"})
+	return c.JSON(fiber.Map{"message": "success"})
 }
 
 // Get User details based on JWT
 func User(c *fiber.Ctx) error {
-	cookie := c.Cookies("jwt")
+    cookie := c.Cookies("jwt")
 
-	token, err := jwt.ParseWithClaims(cookie, &jwt.StandardClaims{}, func(token *jwt.Token) (interface{}, error) {
-		return []byte(SecretKey), nil
-	})
-	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "Unauthenticated"})
-	}
-	claims := token.Claims.(*jwt.StandardClaims)
+    token, err := jwt.ParseWithClaims(cookie, jwt.MapClaims{}, func(token *jwt.Token) (interface{}, error) {
+        return []byte(SecretKey), nil
+    })
+    if err != nil {
+        return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "Unauthenticated"})
+    }
 
-	var Login struct {
-		ID       int
-		Name     string
-		Email    string
-		IsAdmin  bool
-	}
-	err = config.DB.QueryRow("SELECT id, name, email, is_admin FROM Login WHERE id = ?", claims.Issuer).Scan(&Login.ID, &Login.Name, &Login.Email, &Login.IsAdmin)
-	if err == sql.ErrNoRows {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "User not found"})
-	} else if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Database error"})
-	}
+    claims, ok := token.Claims.(jwt.MapClaims)
+    if !ok || claims["Issuer"] == nil {
+        return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid claims in token"})
+    }
 
-	return c.JSON(Login)
+    userId, err := strconv.Atoi(claims["Issuer"].(string))
+    if err != nil {
+        return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid user ID in token"})
+    }
+
+    var user struct {
+        ID    int
+        Name  string
+        Email string
+    }
+
+    err = config.DB.QueryRow("SELECT id, name, email FROM Login WHERE id = ?", userId).Scan(&user.ID, &user.Name, &user.Email)
+    if err == sql.ErrNoRows {
+        return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "User not found"})
+    } else if err != nil {
+        return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Database error"})
+    }
+
+    return c.JSON(user)
 }
+
 
 // Logout by clearing JWT cookie
 func Logout(c *fiber.Ctx) error {
@@ -130,7 +141,7 @@ func SubmitMood(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Cannot parse JSON"})
 	}
 
-	userId := c.Params("userId") // Retrieve userId from the URL parameter
+	userId := c.Params("userId") 
 
 	query := "INSERT INTO MoodLogs (userId, mood, activity, people) VALUES (?, ?, ?, ?)"
 	_, err := config.DB.Exec(query, userId, data["mood"], data["activity"], data["people"])
@@ -142,8 +153,8 @@ func SubmitMood(c *fiber.Ctx) error {
 }
 
 func GetMoodLog(c *fiber.Ctx) error {
-	userId := c.Params("userId") // Retrieve userId from the URL parameter
-	period := c.Query("period", "day") // Default to "day" if period is not specified
+	userId := c.Params("userId") 
+	period := c.Query("period", "day") 
 	var query string
 
 	switch period {
@@ -151,7 +162,7 @@ func GetMoodLog(c *fiber.Ctx) error {
 		query = "SELECT * FROM MoodLogs WHERE userId = ? AND timestamp >= datetime('now', '-7 days') ORDER BY timestamp DESC"
 	case "month":
 		query = "SELECT * FROM MoodLogs WHERE userId = ? AND timestamp >= datetime('now', '-1 month') ORDER BY timestamp DESC"
-	default: // "day" or any other case defaults to last 24 hours
+	default: 
 		query = "SELECT * FROM MoodLogs WHERE userId = ? AND timestamp >= datetime('now', '-1 day') ORDER BY timestamp DESC"
 	}
 
@@ -187,7 +198,7 @@ func SetWakingHours(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Cannot parse JSON"})
 	}
 
-	userId := c.Params("userId") // Retrieve userId from the URL parameter
+	userId := c.Params("userId") 
 	wakeUpTime := data["wakeUpTime"]
 	sleepTime := data["sleepTime"]
 
