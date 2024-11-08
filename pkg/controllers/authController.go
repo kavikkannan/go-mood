@@ -22,9 +22,9 @@ func Register(c *fiber.Ctx) error {
 	}
 
 	password, _ := bcrypt.GenerateFromPassword([]byte(data["password"]), 14)
-	isAdmin := data["is_admin"] == "true"
+	
 
-	_, err := config.DB.Exec("INSERT INTO Login (name, email, password, is_admin) VALUES (?, ?, ?, ?)", data["name"], data["email"], password, isAdmin)
+	_, err := config.DB.Exec("INSERT INTO Login (name, email, password) VALUES (?, ?, ?)", data["name"], data["email"], password)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to register user"})
 	}
@@ -41,10 +41,9 @@ func Login(c *fiber.Ctx) error {
 
 	var id int
 	var hashedPassword []byte
-	var isAdmin bool
 
 	// Query to retrieve user information
-	err := config.DB.QueryRow("SELECT id, password, is_admin FROM Login WHERE email = ?", data["email"]).Scan(&id, &hashedPassword, &isAdmin)
+	err := config.DB.QueryRow("SELECT id, password FROM Login WHERE email = ?", data["email"]).Scan(&id, &hashedPassword)
 	if err == sql.ErrNoRows {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "User not found"})
 	} else if err != nil {
@@ -59,9 +58,8 @@ func Login(c *fiber.Ctx) error {
 
 	// Create JWT claims
 	claims := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"Issuer":   strconv.Itoa(id),
-		"Expires":  time.Now().Add(time.Hour * 24).Unix(),
-		"IsAdmin":  isAdmin,
+		"Issuer":  strconv.Itoa(id),
+		"Expires": time.Now().Add(time.Hour * 24).Unix(),
 	})
 	token, err := claims.SignedString([]byte(SecretKey))
 	if err != nil {
@@ -84,7 +82,6 @@ func Login(c *fiber.Ctx) error {
 
 	return c.JSON(fiber.Map{"message": "Login successful"})
 }
-
 
 // Get User details based on JWT
 func User(c *fiber.Ctx) error {
@@ -133,7 +130,7 @@ func SubmitMood(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Cannot parse JSON"})
 	}
 
-	userId := c.Locals("userId") // Assuming userId is available in local context after authentication
+	userId := c.Params("userId") // Retrieve userId from the URL parameter
 
 	query := "INSERT INTO MoodLogs (userId, mood, activity, people) VALUES (?, ?, ?, ?)"
 	_, err := config.DB.Exec(query, userId, data["mood"], data["activity"], data["people"])
@@ -143,8 +140,9 @@ func SubmitMood(c *fiber.Ctx) error {
 
 	return c.JSON(fiber.Map{"message": "Mood logged successfully"})
 }
+
 func GetMoodLog(c *fiber.Ctx) error {
-	userId := c.Locals("userId") // Assuming userId is available in local context after authentication
+	userId := c.Params("userId") // Retrieve userId from the URL parameter
 	period := c.Query("period", "day") // Default to "day" if period is not specified
 	var query string
 
@@ -182,13 +180,14 @@ func GetMoodLog(c *fiber.Ctx) error {
 
 	return c.JSON(fiber.Map{"logs": logs})
 }
+
 func SetWakingHours(c *fiber.Ctx) error {
 	var data map[string]string
 	if err := c.BodyParser(&data); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Cannot parse JSON"})
 	}
 
-	userId := c.Locals("userId") // Assuming userId is available in local context after authentication
+	userId := c.Params("userId") // Retrieve userId from the URL parameter
 	wakeUpTime := data["wakeUpTime"]
 	sleepTime := data["sleepTime"]
 
