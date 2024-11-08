@@ -1,4 +1,4 @@
-module github.com/kavikkannan/go-ecommerce-grocery-delivery-service
+module github.com/kavikkannan/go-mod
 
 go 1.21.3
 
