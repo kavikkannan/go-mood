@@ -3,7 +3,7 @@ package routes
 import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/kavikkannan/go-mood/pkg/controllers"
-	"github.com/kavikkannan/go-mood/pkg/middleware"
+	
 )
 
 func Setup(app *fiber.App) {

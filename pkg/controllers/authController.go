@@ -7,7 +7,7 @@ import (
 	"github.com/kavikkannan/go-mood/pkg/config"
 	"golang.org/x/crypto/bcrypt"
 	"strconv"
-	"strings"
+
 	"time"
 	"fmt"
 )

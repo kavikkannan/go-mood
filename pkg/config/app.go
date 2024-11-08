@@ -31,33 +31,40 @@ func Connect() {
 // createTables runs SQL statements to create each table if it doesn't exist
 func createTables(db *sql.DB) error {
 	tableStatements := []string{
-		
+		`CREATE TABLE IF NOT EXISTS Login (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			name TEXT NOT NULL,
+			email TEXT NOT NULL UNIQUE,
+			password BLOB NOT NULL
+		);`,
 
-		`CREATE TABLE UserSettings (
+		`CREATE TABLE IF NOT EXISTS UserSettings (
 			userId INTEGER PRIMARY KEY,
 			wakeUpTime TIME,
-			sleepTime TIME
+			sleepTime TIME,
+			FOREIGN KEY (userId) REFERENCES Login(id) ON DELETE CASCADE
 		);`,
-		`CREATE TABLE MoodLogs (
+
+		`CREATE TABLE IF NOT EXISTS MoodLogs (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			userId INTEGER,
 			mood TEXT,
 			activity TEXT,
 			people TEXT,
-			timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+			timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+			FOREIGN KEY (userId) REFERENCES Login(id) ON DELETE CASCADE
 		);`,
 	}
 
-	// Execute each table creation statement
 	for _, stmt := range tableStatements {
 		_, err := db.Exec(stmt)
 		if err != nil {
-			return fmt.Errorf("failed to create table: %v", err)
+			return fmt.Errorf("failed to create table: %w", err)
 		}
 	}
-
 	return nil
 }
+
 
 // GetDB returns a pointer to the database connection
 func GetDB() *sql.DB {
