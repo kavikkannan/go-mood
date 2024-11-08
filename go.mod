@@ -1,4 +1,4 @@
-module github.com/kavikkannan/go-mod
+module github.com/kavikkannan/go-mood
 
 go 1.21.3
 
